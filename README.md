@@ -15,4 +15,4 @@ Source Layer → LLM Layer → Domain Layer → Temporal Layer → Graph Layer �
 - `layers/graph-layer`: planned character and event graph models.
 - `layers/presentation-layer`: relationship graphs, timelines, and export formats.
 
-The current LLM layer still ends at validated `RawStoryAnalysis`; downstream layers are intentionally separate extension points.
+The current LLM layer still ends at validated `RawStoryAnalysis`; downstream layers remain separate from extraction. The [Presentation Layer](layers/presentation-layer/README.md) now renders that JSON as an interactive AntV G6 relationship graph, with HTML character cards and expandable parallel relations.
