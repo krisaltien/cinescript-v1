@@ -1,0 +1,13 @@
+import {readFile,writeFile} from 'node:fs/promises';
+const x=JSON.parse(await readFile(process.argv[2],'utf8')), out=process.argv[3];
+const esc=s=>String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+const chronological=['v1','v2','v3','v4','v5','v6','v7','v8','v9','v10','v11','v12','v13','v14','v15','v16','v17','v18','v19','v20','v21','v22','v23'];
+const byId=new Map(x.events.map(e=>[e.id,e]));
+const events=chronological.map(id=>byId.get(id)).filter(Boolean); const y0=145, gap=83, left=145, width=1280;
+const charMap=new Map(x.characters.map(c=>[c.id,c.name]));
+const rows=events.map((e,i)=>{const current=!e.summary.startsWith('回溯');const people=e.participant_ids.map(id=>charMap.get(id)).filter(Boolean).slice(0,4).join('、');return {e,i,current,people,y:y0+i*gap};});
+const cards=rows.map(r=>{const fill=r.current?'#f5ded7':'#dceaf5';const tag=r.current?'当前叙事':'前史回溯';return `<g><circle cx="${left}" cy="${r.y}" r="10" fill="${r.current?'#c94b42':'#4c82ad'}"/><rect x="${left+28}" y="${r.y-28}" width="1050" height="56" rx="10" fill="${fill}" stroke="${r.current?'#b86a5b':'#7899af'}"/><text x="${left+48}" y="${r.y-6}" font-size="15" font-weight="700">${esc(r.e.id)} · ${esc(tag)}</text><text x="${left+180}" y="${r.y-6}" font-size="17">${esc(r.e.summary.replace(/^回溯：/,'').replace(/^当前牌局：/,'').slice(0,64))}</text><text x="${left+48}" y="${r.y+16}" font-size="12" fill="#6b625c">人物：${esc(r.people||'未明确')}　证据：${esc((r.e.evidence_ids||[]).join('、'))}</text></g>`}).join('');
+const legend='<circle cx="90" cy="'+(y0+events.length*gap+35)+'" r="8" fill="#4c82ad"/><text x="108" y="'+(y0+events.length*gap+40)+'" font-size="14">前史回溯</text><circle cx="230" cy="'+(y0+events.length*gap+35)+'" r="8" fill="#c94b42"/><text x="248" y="'+(y0+events.length*gap+40)+'" font-size="14">当前叙事</text><text x="430" y="'+(y0+events.length*gap+40)+'" font-size="14" fill="#777">时间顺序依据模型抽取的 before 约束；未确定关系未强行排序</text>';
+const h=y0+events.length*gap+90;
+const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="${h}" viewBox="0 0 1500 ${h}"><rect width="1500" height="${h}" fill="#f8f5ef"/><text x="70" y="55" font-size="34" font-weight="800" fill="#273541">《色，戒》实际时间线</text><text x="72" y="88" font-size="16" fill="#766e67">按故事发生顺序重排：香港早期行动 → 上海重新联络 → 当前牌局行动</text><line x1="${left}" y1="${y0-45}" x2="${left}" y2="${y0+(events.length-1)*gap+35}" stroke="#7a8790" stroke-width="4"/>${cards}${legend}</svg>`;
+await writeFile(out,svg);

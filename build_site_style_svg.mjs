@@ -1,0 +1,12 @@
+import {readFile,writeFile} from 'node:fs/promises';
+const x=JSON.parse(await readFile(process.argv[2],'utf8')), out=process.argv[3];
+const ids=new Set(x.relations.flatMap(r=>[r.source_character_id,r.target_character_id]));
+const chars=x.characters.filter(c=>ids.has(c.id));
+const pos={c1:[520,360],c2:[760,260],c3:[960,300],c10:[280,260],c13:[300,510],c11:[520,570],c15:[220,500],c16:[380,670],c4:[1010,500]};
+const esc=s=>String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+const extra=chars.filter(c=>!pos[c.id]); extra.forEach((c,i)=>pos[c.id]=[180+(i%4)*180,760+Math.floor(i/4)*90]);
+const line=r=>{let a=pos[r.source_character_id],b=pos[r.target_character_id]; if(!a||!b)return '';let col=r.type.includes('亲密')?'#d13c88':r.type.includes('行动')||r.type.includes('秘密')?'#2d79bd':r.type.includes('夫妻')?'#c23c3c':'#668b5a';return '<line x1="'+a[0]+'" y1="'+a[1]+'" x2="'+b[0]+'" y2="'+b[1]+'" stroke="'+col+'" stroke-width="2.5" marker-end="url(#arrow)"/><text x="'+((a[0]+b[0])/2)+'" y="'+((a[1]+b[1])/2-7)+'" text-anchor="middle" font-size="14" fill="'+col+'" class="label">'+esc(r.type)+'</text>';};
+const node=(c,i)=>{let p=pos[c.id],fill=['#dbeaf7','#f4ddd5','#e8dff0','#e2efd9'][i%4];return '<g><circle cx="'+p[0]+'" cy="'+p[1]+'" r="42" fill="'+fill+'" stroke="#59636b" stroke-width="2"/><text x="'+p[0]+'" y="'+(p[1]+5)+'" text-anchor="middle" font-size="17" font-weight="700">'+esc(c.name)+'</text></g>';};
+const list=chars.map(c=>'<text x="1235" y="'+(80+chars.indexOf(c)*28)+'" font-size="16">'+esc(c.name)+'</text>').join('');
+const svg='<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="900" viewBox="0 0 1500 900"><defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6 Z" fill="#59636b"/></marker></defs><rect width="1500" height="900" fill="#f7f7f5"/><rect x="1160" y="0" width="340" height="900" fill="#eeeeec" stroke="#c9c9c5"/><text x="45" y="55" font-size="26" font-weight="700">《色，戒》人物关系图</text><text x="45" y="85" font-size="15" fill="#777">核心人物网络</text><text x="1200" y="45" font-size="21" font-weight="700">角色列表</text>'+x.relations.map(line).join('')+chars.map(node).join('')+list+'<text x="55" y="850" font-size="14" fill="#777">粉：亲密关系　蓝：行动/秘密联络　红：夫妻　绿：掩护或其他关系</text></svg>';
+await writeFile(out,svg);

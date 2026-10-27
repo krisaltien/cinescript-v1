@@ -1,0 +1,17 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {parseStory} from '../src/source/parser.js';
+import {demoAnalysis} from '../src/agent/demo.js';
+import {validateAnalysis} from '../src/validation/index.js';
+import {analyze} from '../src/agent/orchestrator.js';
+const story=parseStory('# 故事\r\n\r\n林舟😀回家。\r\n他带着书。\r\n\r\n## 次日\r\n\r\n陈雨来了。','故事','markdown');
+test('CRLF, emoji, chapters preserve original absolute UTF-16 offsets',()=>{assert.equal(story.chapters.length,2);assert.equal(story.paragraphs.length,2);for(const p of story.paragraphs)assert.equal(story.document.text.slice(p.span.start,p.span.end),p.text);assert.deepEqual(parseStory(story.document.text,'故事','markdown'),story);});
+test('reject empty and headings-only input',()=>{assert.throws(()=>parseStory('   '));assert.throws(()=>parseStory('# Hi','x','markdown'));});
+test('plain text and Chinese chapter headings',()=>{const s=parseStory('第一章 出发\n\n甲出门。\n\n第二章 回来\n\n甲回家。');assert.equal(s.chapters.length,2);assert.equal(s.paragraphs.length,2);});
+test('valid fixture survives boundary',()=>assert.deepEqual(validateAnalysis(demoAnalysis(story),story),demoAnalysis(story)));
+test('reject bad quote, offsets, duplicate IDs, document IDs and confidence',()=>{for(const mutate of [(a:any)=>a.evidences[0].quote='invented',(a:any)=>a.evidences[0].span.end=99999,(a:any)=>a.events[0].id='e_demo',(a:any)=>a.document_id='other',(a:any)=>a.events[0].confidence=2]){const a=demoAnalysis(story);mutate(a);assert.throws(()=>validateAnalysis(a,story));}});
+test('reject dangling participants and unsupported claims',()=>{let a=demoAnalysis(story);a.events[0].participant_ids=['missing'];assert.throws(()=>validateAnalysis(a,story));a=demoAnalysis(story);a.events[0].evidence_ids=[];a.events[0].unresolved=[];assert.throws(()=>validateAnalysis(a,story));});
+test('reject strict temporal cycle',()=>{const a=demoAnalysis(story);a.events.push({...a.events[0],id:'ev2'});a.timeline_constraints=[{id:'t1',from_event_id:'ev_demo',to_event_id:'ev2',type:'before',evidence_ids:['e_demo']},{id:'t2',from_event_id:'ev2',to_event_id:'ev_demo',type:'before',evidence_ids:['e_demo']}];assert.throws(()=>validateAnalysis(a,story),/cycle/);});
+test('orchestrator repairs once and validates',async()=>{let calls=0;await analyze(story,{generate:async p=>{assert.match(p,/character-extraction/);return ++calls===1?'bad json':JSON.stringify(demoAnalysis(story));}});assert.equal(calls,2);});
+test('repair failures are bounded',async()=>{let calls=0;await assert.rejects(()=>analyze(story,{generate:async()=>{calls++;return '{}';}}),/after one repair/);assert.equal(calls,2);});
+test('oversized input fails before invoking agent',async()=>{await assert.rejects(()=>analyze(story,{generate:async()=>{throw new Error('Should not call');}},1),/exceeds/);});
