@@ -30,6 +30,8 @@ export async function runBrowserChecks(page, { url = 'http://127.0.0.1:4173', sc
   assert.equal(await page.locator('.character-card').count(), 4);
   assert.match(await stats(), /4 个人物 · 6 条关系 · 3 条可见连线/);
   const initial = await bounds();
+  await page.waitForTimeout(250); // Observe that the initial force simulation really stopped.
+  assert.deepEqual(await bounds(), initial, 'nodes must remain still after the initial force calculation');
   for (let i = 0; i < initial.length; i++) {
     for (let j = i + 1; j < initial.length; j++) {
       const a = initial[i], b = initial[j];
@@ -70,6 +72,8 @@ export async function runBrowserChecks(page, { url = 'http://127.0.0.1:4173', sc
   await page.mouse.up();
   const afterDrag = await card('a').boundingBox();
   assert.ok(Math.abs(afterDrag.x - beforeDrag.x) > 25, 'HTML card dragging must update its position');
+  await page.waitForTimeout(250);
+  assert.deepEqual(await card('a').boundingBox(), afterDrag, 'dragged nodes must not be pulled back by a live force simulation');
   await page.locator('#relayout').click();
   await page.waitForFunction(({ id, x }) => Math.abs(document.querySelector(`[data-node-id="${id}"]`).getBoundingClientRect().x - x) > 15,
     { id: 'character:a', x: afterDrag.x });
@@ -121,5 +125,5 @@ export async function runBrowserChecks(page, { url = 'http://127.0.0.1:4173', sc
   await upload(analysisFixture());
   assert.equal(await page.locator('#error').isVisible(), false);
   assert.deepEqual(errors, []);
-  return { passed: ['automatic layout/no overlap', 'all nodes including isolated', 'canvas edge click/expand/collapse', 'independent reverse relations/details', 'stable expansion', 'zoom', 'HTML node drag', 'canvas panning', 'relayout', 'keyboard card selection', 'mobile/no overflow', 'data update', 'empty state', 'safe text/avatar rendering', 'invalid import recovery'], pageErrors: errors };
+  return { passed: ['automatic layout/no overlap', 'all nodes including isolated', 'canvas edge click/expand/collapse', 'independent reverse relations/details', 'stable expansion', 'static force snapshot/no idle drift', 'zoom', 'HTML node drag/no pullback', 'canvas panning', 'relayout', 'keyboard card selection', 'mobile/no overflow', 'data update', 'empty state', 'safe text/avatar rendering', 'invalid import recovery'], pageErrors: errors };
 }

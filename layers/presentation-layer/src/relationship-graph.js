@@ -1,5 +1,9 @@
 import { Graph, HTML, Quadratic, ExtensionCategory, register } from '@antv/g6';
-import { adaptAnalysis, CARD_SIZE, displayEdges, safeAvatarUrl } from './graph-data.js';
+import {
+  adaptAnalysis, CARD_SIZE, displayEdges, safeAvatarUrl,
+  EDGE_LABEL_FONT_FAMILY, EDGE_LABEL_FONT_SIZE, EDGE_LABEL_MAX_WIDTH,
+} from './graph-data.js';
+import { RelationshipLayout } from './graph-layout.js';
 
 // HTML children report their own offsetX/Y. Use viewport coordinates so dragging
 // a name, avatar or description behaves exactly like dragging the card itself.
@@ -24,6 +28,7 @@ class RelationshipCurve extends Quadratic {
 }
 register(ExtensionCategory.NODE, 'character-html', CharacterHTML);
 register(ExtensionCategory.EDGE, 'relationship-curve', RelationshipCurve);
+register(ExtensionCategory.LAYOUT, 'relationship-layout', RelationshipLayout);
 
 /** Reusable, framework-independent G6 component. Never writes to the input JSON. */
 export class RelationshipGraph {
@@ -36,12 +41,15 @@ export class RelationshipGraph {
     this.cards = new Map();
     this.queue = Promise.resolve();
     this.disposed = false;
+    const textContext = document.createElement('canvas').getContext('2d');
+    textContext.font = `${EDGE_LABEL_FONT_SIZE}px ${EDGE_LABEL_FONT_FAMILY}`;
     this.graph = new Graph({
       container, animation: false, autoResize: false, padding: 48,
       zoomRange: [0.08, 3],
       layout: {
-        type: 'antv-dagre', rankdir: 'LR', nodeSize: CARD_SIZE,
-        nodesep: 80, ranksep: 220, preventOverlap: true,
+        type: 'relationship-layout',
+        getModel: () => this.model,
+        measureText: (label) => textContext.measureText(label).width,
       },
       node: {
         type: 'character-html',
@@ -55,11 +63,11 @@ export class RelationshipGraph {
         style: {
           lineWidth: 1.6, endArrow: true, endArrowSize: 8, startArrowSize: 8,
           cursor: 'pointer', increasedLineWidthForHitTesting: 10,
-          labelFontFamily: '-apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif',
-          labelFontSize: 12, labelFill: '#33444e', labelAutoRotate: false,
+          labelFontFamily: EDGE_LABEL_FONT_FAMILY,
+          labelFontSize: EDGE_LABEL_FONT_SIZE, labelFill: '#33444e', labelAutoRotate: false,
           labelBackground: true, labelBackgroundFill: '#f7f7f5',
           labelBackgroundRadius: 4, labelPadding: [4, 6],
-          labelWordWrap: true, labelMaxWidth: 180, labelMaxLines: 2,
+          labelWordWrap: true, labelMaxWidth: EDGE_LABEL_MAX_WIDTH, labelMaxLines: 2,
           labelTextOverflow: 'ellipsis',
         },
         state: {

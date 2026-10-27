@@ -1,5 +1,8 @@
 // Read-only presentation adapter for the existing RawStoryAnalysis JSON.
 export const CARD_SIZE = [244, 112];
+export const EDGE_LABEL_FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif';
+export const EDGE_LABEL_FONT_SIZE = 12;
+export const EDGE_LABEL_MAX_WIDTH = 180;
 const text = (value) => typeof value === 'string' ? value.trim() : '';
 const validId = (value) => typeof value === 'string' && value.trim().length > 0;
 
