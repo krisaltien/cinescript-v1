@@ -1,0 +1,11 @@
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const a = JSON.parse(await readFile(process.argv[2], 'utf8')); const out=process.argv[3]; await mkdir(out,{recursive:true});
+const ids=new Map(); const topics=a.characters.map(c=>{const id='t_'+randomUUID();ids.set(c.id,id);return `<topic id="${id}"><title>${esc(c.name)}</title><notes><plain>${esc(`${c.aliases?.length?`别名：${c.aliases.join('、')}\n`:''}${c.description}`)}</plain></notes></topic>`;}).join('');
+const rel=a.relations.filter(r=>ids.has(r.source_character_id)&&ids.has(r.target_character_id)).map(r=>`<relationship id="r_${randomUUID()}"><source ref="${ids.get(r.source_character_id)}"/><target ref="${ids.get(r.target_character_id)}"/><title>${esc(`${r.type}：${r.description}`)}</title></relationship>`).join('');
+const root='root_'+randomUUID();
+await writeFile(`${out}/content.xml`,`<?xml version="1.0" encoding="UTF-8"?><xmap-content xmlns="urn:xmind:xmap:xmlns:content:2.0" xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:svg="http://www.w3.org/2000/svg" xmlns:style="urn:xmind:xmap:xmlns:style:2.0" xmlns:manifest="urn:xmind:xmap:xmlns:manifest:1.0" version="2.0"><sheet id="sheet_${randomUUID()}"><title>《色，戒》人物关系图</title><topic id="${root}"><title>《色，戒》人物关系图</title><children><topics type="attached">${topics}</topics></children></topic><relationships>${rel}</relationships></sheet></xmap-content>`);
+await writeFile(`${out}/styles.xml`,`<?xml version="1.0" encoding="UTF-8"?><xmap-styles xmlns="urn:xmind:xmap:xmlns:style:2.0" version="2.0"><styles/></xmap-styles>`);
+await writeFile(`${out}/meta.xml`,`<?xml version="1.0" encoding="UTF-8"?><meta xmlns="urn:xmind:xmap:xmlns:meta:1.0" version="2.0"><Author>CineScript</Author><CreatedBy>XMind</CreatedBy></meta>`);
+await writeFile(`${out}/manifest.xml`,`<?xml version="1.0" encoding="UTF-8"?><manifest xmlns="urn:xmind:xmap:xmlns:manifest:1.0"><file-entry full-path="content.xml" media-type="text/xml"/><file-entry full-path="styles.xml" media-type="text/xml"/><file-entry full-path="meta.xml" media-type="text/xml"/><file-entry full-path="manifest.xml" media-type="text/xml"/></manifest>`);
